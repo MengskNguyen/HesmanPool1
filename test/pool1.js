@@ -4,10 +4,6 @@ const { ethers } = require("hardhat");
 
 describe("Pool 1 testing", function() {
     it("Testing pool 1", async function() {
-
-        // console.log("Block", await ethers.provider.getBlockNumber());
-        // await ethers.provider.send("hardhat_mine", ["0x" + (10 * 86400).toString(16)]);
-        // console.log("Block", await ethers.provider.getBlockNumber());
         
         const BamiToken = await ethers.getContractFactory("Bami");
         const BUSDtoken = await ethers.getContractFactory("BUSDToken");
@@ -15,7 +11,7 @@ describe("Pool 1 testing", function() {
         const Pool1 = await ethers.getContractFactory("Pool1");
 
         // Get address
-        const [owner, addr1, addr2, addr3] = await ethers.getSigners();
+        const [owner, addr1, addr2, addr3, addr4] = await ethers.getSigners();
 
         // Deploy contract
         const bamiInstance = await BamiToken.deploy();
@@ -37,24 +33,24 @@ describe("Pool 1 testing", function() {
 
         // Test owner of pool1 = owner.address
         const pool1Owner = await pool1Instance.owner();
-        console.log(`. Owner of Pool1: \n Expect: ${owner.address} - Result: ${pool1Owner}`);
+        console.log(`. Owner of Pool1: \n Expect: ${owner.address} - Result: ${pool1Owner}\n`);
 
         // Mint token for addr1 address
         await hesmanInstance.mint(pool1Instance.address, 10000);
         let HESBalanceOfPool1 = await hesmanInstance.balanceOf(pool1Instance.address);
-        console.log(`. Balance HES token of Pool1: \n Expect: 10000 - Result: ${HESBalanceOfPool1}`);
+        console.log(`. Balance HES token of Pool1: \n Expect: 10000 - Result: ${HESBalanceOfPool1}\n`);
 
         // Test if user can stake before staking time
         await pool1Instance.connect(addr1).stakeBamiToken()
-            .catch(err => {console.log(`. Expect reverted with "Smart contract is paused"\n ${err}`)})
+            .catch(err => {console.log(`. Expect reverted with "Smart contract is paused"\n ${err}\n`)})
 
         // Test if user can set paused
         await pool1Instance.connect(addr1).setPause(false)
-            .catch(err => {console.log(`. Expect reverted with "Ownable: caller is not the owner"\n ${err}`)})
+            .catch(err => {console.log(`. Expect reverted with "Ownable: caller is not the owner"\n ${err}\n`)})
 
         // Test if owner can set pause 
         await pool1Instance.connect(owner).setPause(false)
-        console.log(`. Pause state:\n Expect: false - result: ${await pool1Instance.isPause()}`);
+        console.log(`. Pause state:\n Expect: false - result: ${await pool1Instance.isPause()}\n`);
 
         // Get timestamp
         const currentBlockNumber = await ethers.provider.getBlockNumber();
@@ -69,7 +65,7 @@ describe("Pool 1 testing", function() {
             currentTimeStamp + 86400*3,
             currentTimeStamp + 86400*4,
             currentTimeStamp + 86400*5,
-        ).catch(err => {console.log(`. Expect reverted with "Ownable: caller is not the owner"\n ${err}`)});
+        ).catch(err => {console.log(`. Expect reverted with "Ownable: caller is not the owner"\n ${err}\n`)});
 
         await pool1Instance.connect(addr1).configPriceAndSlot(
             5000,   //_stakePrice
@@ -78,7 +74,7 @@ describe("Pool 1 testing", function() {
             300,    //_BamiToBuySlot
             10,     //_BUSDToBuySlot
             1000,   //_hesmanPerSlot 
-        ).catch(err => {console.log(`. Expect reverted with "Ownable: caller is not the owner"\n ${err}`)});
+        ).catch(err => {console.log(`. Expect reverted with "Ownable: caller is not the owner"\n ${err}\n`)});
 
         // Test if owner can access onlyOwner function
         await pool1Instance.connect(owner).configTimer(
@@ -89,7 +85,7 @@ describe("Pool 1 testing", function() {
             currentTimeStamp + 86400*10, //unStakeTimeStart
         );
 
-        console.log(`. Test if owner can set time:\n Expect: ${await currentTimeStamp + 86400}, ${await currentTimeStamp + 86400*2}, ${await currentTimeStamp + 86400*3}, ${await currentTimeStamp + 86400*4}, ${await currentTimeStamp + 86400*5}\n Result: ${await pool1Instance.stakingTimeStart()}, ${await pool1Instance.stakingTimeEnd()}, ${await pool1Instance.buySlotTimeStart()}, ${await pool1Instance.buySlotTimeEnd()}, ${await pool1Instance.unStakeTimeStart()}`)
+        console.log(`. Test if owner can set time:\n Expect: ${await currentTimeStamp + 86400}, ${await currentTimeStamp + 86400*2}, ${await currentTimeStamp + 86400*3}, ${await currentTimeStamp + 86400*4}, ${await currentTimeStamp + 86400*5}\n Result: ${await pool1Instance.stakingTimeStart()}, ${await pool1Instance.stakingTimeEnd()}, ${await pool1Instance.buySlotTimeStart()}, ${await pool1Instance.buySlotTimeEnd()}, ${await pool1Instance.unStakeTimeStart()}\n`)
 
         await pool1Instance.connect(owner).configPriceAndSlot(
             5000,   //_stakePrice
@@ -105,30 +101,39 @@ describe("Pool 1 testing", function() {
         // console.log("Timestamp: ", currentTimeStamp);
         // Test if user can stake before staking time
         await pool1Instance.connect(addr1).stakeBamiToken()
-            .catch(err => {console.log(`. Expect reverted with "Invalid staking time"\n ${err}`)})
+            .catch(err => {console.log(`. Expect reverted with "Invalid staking time"\n ${err}\n`)})
 
         // Forward 1.5 day
         await ethers.provider.send("hardhat_mine", ["0x" + (1.5 * 86400).toString(16)]);
 
         // Test if user can stake if don't have enough bami
         await pool1Instance.connect(addr1).stakeBamiToken()
-            .catch(err => {console.log(`. Expect reverted with "Your account doesn't have enough Bami token to stake"\n ${err}`)})
-
+            .catch(err => {console.log(`. Expect reverted with "Your account doesn't have enough Bami token to stake"\n ${err}\n`)})
+        
+        // Test if blacklist user can stake
+        await pool1Instance.connect(owner).setBlackList(addr4.address, true);
+        console.log(". Expect blacklist[addr4] = true\n Result: ", await pool1Instance.blacklist(addr4.address));
+        await pool1Instance.connect(addr4).stakeBamiToken()
+            .catch(err => {console.log(`. Expect reverted with "You are on blacklist"\n Result: ${err}\n`)})
+        
+        // Test if owner can un-blacklist user
+        await pool1Instance.connect(owner).setBlackList(addr4.address, false);
+        console.log(". Expect blacklist[addr4] = False\n Result: ", await pool1Instance.blacklist(addr4.address), "\n");
         
         // Mint bami for addr1
         await bamiInstance.mint(addr1.address, 20000);
         let addr1BamiBalance = await bamiInstance.balanceOf(addr1.address)
-        console.log(`. Expected Bami balance of addr1 to change:\n Expect: 20000\n Result: ${addr1BamiBalance}`)
+        console.log(`. Expected Bami balance of addr1 to change:\n Expect: 20000\n Result: ${addr1BamiBalance}\n`)
 
         // Mint bami for addr3
         await bamiInstance.mint(addr3.address, 20000);
         let addr3BamiBalance = await bamiInstance.balanceOf(addr3.address)
-        console.log(`. Expected Bami balance of addr3 to change:\n Expect: 20000\n Result: ${addr3BamiBalance}`)
+        console.log(`. Expected Bami balance of addr3 to change:\n Expect: 20000\n Result: ${addr3BamiBalance}\n`)
 
         // Test if user can stake when pause
         await pool1Instance.connect(owner).setPause(true)
         await pool1Instance.connect(addr1).stakeBamiToken()
-            .catch(err => console.log(`. Expected reverted with "Smart contract is paused"\n${err}`))
+            .catch(err => console.log(`. Expected reverted with "Smart contract is paused"\n${err}\n`))
 
         await pool1Instance.connect(owner).setPause(false)
 
@@ -141,8 +146,8 @@ describe("Pool 1 testing", function() {
         let addr1BamiBalance1 = await bamiInstance.balanceOf(addr1.address);
         let pool1BamiBalance1 = await bamiInstance.balanceOf(pool1Instance.address);
         let stakePrice = await pool1Instance.stakePrice();
-        console.log(`. Test if user can stake and transfer right amount of token:\n Expect: ${addr1BamiBalance - stakePrice} - ${pool1BamiBalance + stakePrice}\n Result: ${addr1BamiBalance1} - ${pool1BamiBalance1}`);
-        console.log("15. Expect userAlreadyStake[addr1] = true\n Result: ", await pool1Instance.userAlreadyStake(addr1.address));
+        console.log(`. Test if user can stake and transfer right amount of token:\n Expect: ${addr1BamiBalance - stakePrice} - ${pool1BamiBalance + stakePrice}\n Result: ${addr1BamiBalance1} - ${pool1BamiBalance1}\n`);
+        console.log(". Expect userAlreadyStake[addr1] = true\n Result: ", await pool1Instance.userAlreadyStake(addr1.address), "\n");
         
         // addr3 stake bami
         await bamiInstance.connect(addr3).approve(pool1Instance.address, 10000);
@@ -150,15 +155,15 @@ describe("Pool 1 testing", function() {
 
         // Test if user can stake again
         await pool1Instance.connect(addr1).stakeBamiToken()
-            .catch(err => {console.log(`. Expect reverted with "You already staked"\n ${err}`)})
+            .catch(err => {console.log(`. Expect reverted with "You already staked"\n ${err}\n`)})
 
         // Test if user can buy slot when not buy slot time
         await pool1Instance.connect(addr1).buySlot()
-            .catch(err => {console.log(`. Expect reverted with "Invalid buy slot time"\n ${err}`)});
+            .catch(err => {console.log(`. Expect reverted with "Invalid buy slot time"\n ${err}\n`)});
 
         // Test if user can withdraw bami when not unstake time
         await pool1Instance.connect(addr1).withdrawStakedBamiToken()
-            .catch(err => {console.log(`. Expect reverted with "Invalid unstake time"\n ${err}`)});         
+            .catch(err => {console.log(`. Expect reverted with "Invalid unstake time"\n ${err}\n`)});         
 
         // Forward 1.5 day
         await ethers.provider.send("hardhat_mine", ["0x" + (1.5 * 86400).toString(16)]);
@@ -166,15 +171,15 @@ describe("Pool 1 testing", function() {
         // Test if user can stake when pass staking time
         await bamiInstance.connect(addr2).approve(pool1Instance.address, 10000);
         await pool1Instance.connect(addr2).stakeBamiToken()
-            .catch(err => {console.log(`. Expect reverted with "Invalid staking time"\n ${err}`)})
+            .catch(err => {console.log(`. Expect reverted with "Invalid staking time"\n ${err}\n`)})
 
         // Test if unstake user can buy slot
         await pool1Instance.connect(addr2).buySlot()
-            .catch(err => {console.log(`. Expect reverted with "You haven't staked"\n ${err}`)})
+            .catch(err => {console.log(`. Expect reverted with "You haven't staked"\n ${err}\n`)})
 
         // Test if user can buy slot when dont have enough busd
         await pool1Instance.connect(addr1).buySlot()
-            .catch(err => {console.log(`. Expect reverted with "Your account doesn't have enough BUSD token to buy slot"\n ${err}`)})
+            .catch(err => {console.log(`. Expect reverted with "Your account doesn't have enough BUSD token to buy slot"\n ${err}\n`)})
 
         // To set total slot = 0
         await pool1Instance.connect(owner).configPriceAndSlot(
@@ -188,7 +193,7 @@ describe("Pool 1 testing", function() {
 
         // Test if user can buy slot when out of slot
         await pool1Instance.connect(addr1).buySlot()
-            .catch(err => {console.log(`. Expect reverted with "Out of slots"\n ${err}`)})
+            .catch(err => {console.log(`. Expect reverted with "Out of slots"\n ${err}\n`)})
 
         // To set total slot = 100
         await pool1Instance.connect(owner).configPriceAndSlot(
@@ -215,11 +220,11 @@ describe("Pool 1 testing", function() {
         let pool1BamiBalance2 = await bamiInstance.balanceOf(pool1Instance.address);
         let pool1BUSDBalance = await busdInstance.balanceOf(pool1Instance.address);
 
-        console.log(". Expected userHasBoughtSlot[addr1.address] = true\n Result: ", await pool1Instance.userHasBoughtSlot(addr1.address));
-        console.log(`. Expected Bami balance of addr1 to minus 300:\n Expect: 14700\n Result: ${addr1BamiBalance2}`);
-        console.log(`. Expected BUSD balance of addr1 to minus 10:\n Expect: 19990\n Result: ${addr1BUSDBalance1}`);
-        console.log(`. Expected Bami balance of pool1 to plus 300:\n Expect: 5300\n Result: ${pool1BamiBalance2}`);
-        console.log(`. Expected BUSD balance of pool1 to plus 10:\n Expect: 10\n Result: ${pool1BUSDBalance}`);
+        console.log(". Expected userHasBoughtSlot[addr1.address] = true\n Result: ", await pool1Instance.userHasBoughtSlot(addr1.address), "\n");
+        console.log(`. Expected Bami balance of addr1 to minus 300:\n Expect: 14700\n Result: ${addr1BamiBalance2}\n`);
+        console.log(`. Expected BUSD balance of addr1 to minus 10:\n Expect: 19990\n Result: ${addr1BUSDBalance1}\n`);
+        console.log(`. Expected Bami balance of pool1 to plus 300:\n Expect: 5300\n Result: ${pool1BamiBalance2}\n`);
+        console.log(`. Expected BUSD balance of pool1 to plus 10:\n Expect: 10\n Result: ${pool1BUSDBalance}\n`);
 
         // Owner set claim stage
         await pool1Instance.connect(owner).setClaimStage([currentTimeStamp + 86400*7, currentTimeStamp + 86400*8, currentTimeStamp + 86400*9, currentTimeStamp + 86400*10], [25,25,25,25]);
@@ -227,16 +232,16 @@ describe("Pool 1 testing", function() {
         
         // Test if user can claim hesman before time
         await pool1Instance.connect(addr1).claimHesman()
-            .catch(err => {console.log(`. Expect reverted with "Claim time is not started"\n ${err}`)})
+            .catch(err => {console.log(`. Expect reverted with "Claim time is not started"\n ${err}\n`)})
 
         // Test if user can claim hesman
         await ethers.provider.send("hardhat_mine", ["0x" + (4 * 86400).toString(16)]);
 
         await pool1Instance.connect(addr1).claimHesman();
-        console.log(". Expect balance of addr1 increase 250\n Result: ", await hesmanInstance.balanceOf(addr1.address));
+        console.log(". Expect balance of addr1 increase 250\n Result: ", await hesmanInstance.balanceOf(addr1.address), "\n");
 
         await pool1Instance.connect(addr1).claimHesman()
-            .catch(err => {console.log(`. Expect reverted with "Claim time is not started"\n ${err}`)})
+            .catch(err => {console.log(`. Expect reverted with "Claim time is not started"\n ${err}\n`)})
 
         await ethers.provider.send("hardhat_mine", ["0x" + (4 * 86400).toString(16)]);
         await pool1Instance.connect(addr1).claimHesman();
@@ -244,39 +249,39 @@ describe("Pool 1 testing", function() {
         await pool1Instance.connect(addr1).claimHesman();
         console.log(". Expect balance of addr1 increase 250\n Result: ", await hesmanInstance.balanceOf(addr1.address));
         await pool1Instance.connect(addr1).claimHesman();
-        console.log(". Expect balance of addr1 increase 250\n Result: ", await hesmanInstance.balanceOf(addr1.address));
+        console.log(". Expect balance of addr1 increase 250\n Result: ", await hesmanInstance.balanceOf(addr1.address), "\n");
 
         // Test if user can claim pass limit
         await pool1Instance.connect(addr1).claimHesman()
-            .catch(err => {console.log(`. Expect reverted with "You have claimed all of your tokens"\n ${err}`)});
+            .catch(err => {console.log(`. Expect reverted with "You have claimed all of your tokens"\n ${err}\n`)});
         
         // Test if user can withdraw Bami
-        // console.log(`. Expect balance of user and pool change +/-5000:\n Expect: +5000 -5000\n Result: ${addr1BamiBalance2} ${pool1BamiBalance2}`);
+        // console.log(`. Expect balance of user and pool change +/-5000:\n Expect: +5000 -5000\n Result: ${addr1BamiBalance2} ${pool1BamiBalance2}\n`);
         await pool1Instance.connect(addr1).withdrawStakedBamiToken();
         addr1BamiBalance = await bamiInstance.balanceOf(addr1.address);
         pool1BamiBalance = await bamiInstance.balanceOf(pool1Instance.address);
-        console.log(`. Expect balance of user and pool change +/-5000:\n Expect: +5000 -5000\n Result: ${addr1BamiBalance} ${pool1BamiBalance}`);
+        console.log(`. Expect balance of user and pool change +/-5000:\n Expect: +5000 -5000\n Result: ${addr1BamiBalance} ${pool1BamiBalance}\n`);
         
         // Test if user stake but didn't buy Hesman can withdraw Bami
         await pool1Instance.connect(addr3).withdrawStakedBamiToken();
         addr3BamiBalance = await bamiInstance.balanceOf(addr3.address);
         pool1BamiBalance = await bamiInstance.balanceOf(pool1Instance.address);
-        console.log(`. Expect balance of user and pool change +/-5000:\n Expect: +5000 -5000\n Result: ${addr1BamiBalance} ${pool1BamiBalance}`);
+        console.log(`. Expect balance of user and pool change +/-5000:\n Expect: +5000 -5000\n Result: ${addr1BamiBalance} ${pool1BamiBalance}\n`);
 
         // Test if user can withdraw Bami again
         await pool1Instance.connect(addr1).withdrawStakedBamiToken()
-            .catch(err => {console.log(`. Expect reverted with "You haven't staked"\n ${err}`)})
+            .catch(err => {console.log(`. Expect reverted with "You haven't staked"\n ${err}\n`)})
 
         // Test emergency withdraw
         let ownerBamiBalance = await bamiInstance.balanceOf(owner.address);
         let ownerHesmanBalance = await hesmanInstance.balanceOf(owner.address);
         let ownerBUSDBalance = await busdInstance.balanceOf(owner.address);
-        console.log(`${ownerBamiBalance} - ${ownerHesmanBalance} - ${ownerBUSDBalance}`);
+        console.log(` Owner balance before withdraw all token: ${ownerBamiBalance} - ${ownerHesmanBalance} - ${ownerBUSDBalance}`);
         await pool1Instance.connect(owner).EmergencyWithdrawAllToken()
         ownerBamiBalance = await bamiInstance.balanceOf(owner.address);
         ownerHesmanBalance = await hesmanInstance.balanceOf(owner.address);
         ownerBUSDBalance = await busdInstance.balanceOf(owner.address);
-        console.log(`${ownerBamiBalance} - ${ownerHesmanBalance} - ${ownerBUSDBalance}`);
+        console.log(` Owner balance after withdraw: ${ownerBamiBalance} - ${ownerHesmanBalance} - ${ownerBUSDBalance}\n`);
 
     })
 })
