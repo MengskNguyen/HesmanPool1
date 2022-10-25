@@ -519,8 +519,8 @@
       ]
     },
     "/Users/Anh/Desktop/hardhat/Pool1/Contracts/Pool2.sol": {
-      "lastModificationDate": 1666662144000,
-      "contentHash": "6e97cb389fa8d7e4e68d299b5c17ced5",
+      "lastModificationDate": 1666666659000,
+      "contentHash": "75dbd235fdfe9f729cd8a9769edd8944",
       "sourceName": "Contracts/Pool2.sol",
       "solcConfig": {
         "version": "0.8.17",
@@ -557,6 +557,47 @@
       ],
       "artifacts": [
         "Pool2"
+      ]
+    },
+    "/Users/Anh/Desktop/hardhat/Pool1/Contracts/Pool3.sol": {
+      "lastModificationDate": 1666668255000,
+      "contentHash": "c14b5dd56bdeb74be137c6aff899fbbb",
+      "sourceName": "Contracts/Pool3.sol",
+      "solcConfig": {
+        "version": "0.8.17",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "@openzeppelin/contracts/token/ERC20/ERC20.sol",
+        "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol",
+        "@openzeppelin/contracts/utils/math/SafeMath.sol",
+        "@openzeppelin/contracts/access/Ownable.sol",
+        "@openzeppelin/contracts/security/ReentrancyGuard.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.4"
+      ],
+      "artifacts": [
+        "Pool3"
       ]
     }
   }

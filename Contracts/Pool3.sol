@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-contract Pool2 is Ownable, ReentrancyGuard {
+contract Pool3 is Ownable, ReentrancyGuard {
     using SafeMath for uint256;
     using SafeERC20 for ERC20;
 
@@ -18,7 +18,7 @@ contract Pool2 is Ownable, ReentrancyGuard {
     mapping(address => bool) public userAlreadyStake;   
     mapping(address => bool) public userHasBoughtSlot;  
     mapping(address => uint256) public nextStageIndex;
-    mapping(address => bool) public blacklist;
+    mapping(address => bool) public whitelist;
 
     bool public isPause;
 
@@ -33,6 +33,13 @@ contract Pool2 is Ownable, ReentrancyGuard {
     uint256 public stakingTimeEnd;              
     uint256 public buySlotTimeStart;            
     uint256 public buySlotTimeEnd;                     
+    uint256 public unStakeTimeStart;
+
+    function inputWhitelist(address[] memory _addressList) external onlyOwner {
+        for(uint256 i = 0; i < _addressList.length; i++) {
+            whitelist[_addressList[i]] = true;
+        }
+    }             
 
     function setPause(bool _pause) public onlyOwner {
         isPause = _pause;
@@ -70,13 +77,15 @@ contract Pool2 is Ownable, ReentrancyGuard {
         uint256 _stakingTimeStart,
         uint256 _stakingTimeEnd,
         uint256 _buySlotTimeStart,
-        uint256 _buySlotTimeEnd
+        uint256 _buySlotTimeEnd,
+        uint256 _unStakeTimeStart
     ) external onlyOwner {
         require(_stakingTimeStart < _stakingTimeEnd, "Invalid staking time input");
         stakingTimeStart = _stakingTimeStart;
         stakingTimeEnd = _stakingTimeEnd;
         buySlotTimeStart = _buySlotTimeStart;
         buySlotTimeEnd = _buySlotTimeEnd;
+        unStakeTimeStart = _unStakeTimeStart;
     } 
 
     // Config price and slot
@@ -97,13 +106,13 @@ contract Pool2 is Ownable, ReentrancyGuard {
     }
 
     // Blacklist
-    function setBlackList(address _address, bool _isBlackList) external onlyOwner {
-        blacklist[_address] = _isBlackList;
+    function setBlackList(address _address, bool _iswhitelist) external onlyOwner {
+        whitelist[_address] = _iswhitelist;
     }
 
     // Confirm user is not blacklist
-    modifier isWhiteList() {
-        require(!blacklist[msg.sender], "You are on blacklist");
+    modifier iswhitelist() {
+        require(whitelist[msg.sender], "You are on blacklist");
         _;
     } 
 
@@ -201,7 +210,7 @@ contract Pool2 is Ownable, ReentrancyGuard {
      // --------- ĐĂNG KÍ --------- //
 
     // Staking BAMI
-    function stakeBamiToken() external nonReentrant isRun isWhiteList validStakingTime hasNotStaked hasEnoughBamiTokenToStake {
+    function stakeBamiToken() external nonReentrant isRun iswhitelist validStakingTime hasNotStaked hasEnoughBamiTokenToStake {
         bamiTokenAddress.transferFrom(msg.sender, address(this), stakePrice);
         userAlreadyStake[msg.sender] = true;
     } 
@@ -209,7 +218,7 @@ contract Pool2 is Ownable, ReentrancyGuard {
      // --------- KẾT THÚC ĐĂNG KÍ --------- //
 
      // --------- MUA SLOT --------- //
-    function buySlot() external nonReentrant isRun isWhiteList validBuySlotTime isNotOutOfSlot hasStaked hasNotBoughtSlot {
+    function buySlot() external nonReentrant isRun iswhitelist validBuySlotTime isNotOutOfSlot hasStaked hasNotBoughtSlot {
         require(bamiTokenAddress.balanceOf(msg.sender) >= BamiToBuySlot, "You don't have enough BAMI");
         require(BUSDTokenAddress.balanceOf(msg.sender) >= BUSDToBuySlot, "You don't have enough BUSD");
         bamiTokenAddress.transferFrom(msg.sender, address(this), BamiToBuySlot);
@@ -222,7 +231,7 @@ contract Pool2 is Ownable, ReentrancyGuard {
     // --------- RÚT HESMAN --------- //
 
     // Withdraw Hesman token
-    function claimHesman() nonReentrant isRun isWhiteList hasBoughtSlot external {
+    function claimHesman() nonReentrant isRun iswhitelist hasBoughtSlot external {
         uint256 currentTime = block.timestamp;
         require(nextStageIndex[msg.sender] < ClaimStageList.length, "You have claimed all of your tokens");
 
